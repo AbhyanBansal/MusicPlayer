@@ -10,6 +10,8 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { MiniPlayer } from '../components/MiniPlayer';
 import { BottomNav } from '../components/BottomNav';
 import { SongListItem } from '../components/SongListItem';
+import { getArtistName } from '../utils/musicUtils';
+import { useThemeStore } from '../store/useThemeStore';
 
 const { width } = Dimensions.get('window');
 
@@ -17,6 +19,7 @@ export const AlbumScreen: React.FC<AlbumDetailsScreenProps> = ({ route, navigati
     const { id, name, image } = route.params;
     const [loading, setLoading] = useState(true);
     const [songs, setSongs] = useState<Song[]>([]);
+    const [albumArtist, setAlbumArtist] = useState<string>('');
     const [isShuffleOn, setIsShuffleOn] = useState(false);
 
     // Store
@@ -26,12 +29,26 @@ export const AlbumScreen: React.FC<AlbumDetailsScreenProps> = ({ route, navigati
     const isPlaying = usePlayerStore(state => state.isPlaying);
     const togglePlay = usePlayerStore(state => state.togglePlay);
 
+    // Theme
+    const { theme, isDarkMode } = useThemeStore();
+
     useEffect(() => {
         const fetchDetails = async () => {
             setLoading(true);
             const data = await getAlbumDetails(id);
             if (data && data.songs) {
-                setSongs(data.songs);
+                // Ensure primaryArtists is populated, fallback to Album Artist
+                const album = data.album;
+                const artistName = getArtistName(album.artists || album.primaryArtists);
+                setAlbumArtist(artistName);
+
+                const songsWithArtist = data.songs.map(song => ({
+                    ...song,
+                    primaryArtists: getArtistName(song.artists || song.primaryArtists) !== 'Unknown Artist'
+                        ? getArtistName(song.artists || song.primaryArtists)
+                        : artistName
+                }));
+                setSongs(songsWithArtist);
             }
             setLoading(false);
         };
@@ -50,8 +67,6 @@ export const AlbumScreen: React.FC<AlbumDetailsScreenProps> = ({ route, navigati
         }
         return [startSong, ...otherSongs];
     };
-
-    // ...
 
     const handlePlaySong = (song: Song, index: number) => {
         // If the song is already the current track, just toggle play/pause
@@ -87,28 +102,15 @@ export const AlbumScreen: React.FC<AlbumDetailsScreenProps> = ({ route, navigati
         setIsShuffleOn(!isShuffleOn);
     };
 
-    const getImageUrl = (images?: ImageQuality[]) => {
-        if (!images || images.length === 0) return image || 'https://www.awi.de/o/awitheme/assets/images/placeholder-square.svg';
-        return images[2]?.url || images[1]?.url || images[0]?.url || image;
-    };
-
-    const formatDuration = (seconds?: string | number) => {
-        if (!seconds) return '';
-        const s = Number(seconds);
-        const min = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return `${min}:${sec < 10 ? '0' : ''}${sec}`;
-    };
-
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             {/* Header Image Background */}
             <View style={styles.headerImageContainer}>
                 <Image source={{ uri: image }} style={styles.headerImage} blurRadius={30} />
                 <LinearGradient
-                    colors={['transparent', '#eef2f6']}
+                    colors={['transparent', theme.background]}
                     style={styles.gradient}
                 />
             </View>
@@ -116,59 +118,59 @@ export const AlbumScreen: React.FC<AlbumDetailsScreenProps> = ({ route, navigati
             <SafeAreaView style={styles.safeArea}>
                 {/* Navigation Header */}
                 <View style={styles.navHeader}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <ArrowLeft size={24} color="#0f172a" />
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)' }]}>
+                        <ArrowLeft size={24} color={theme.text} />
                     </TouchableOpacity>
                     <TouchableOpacity>
-                        <MoreVertical size={24} color="#0f172a" />
+                        <MoreVertical size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
-                {/* Album Info */}
-                <View style={styles.albumInfoContainer}>
-                    <View style={styles.albumImageWrapper}>
-                        <Image source={{ uri: image }} style={styles.albumCoverImage} />
-                    </View>
-                    <Text style={styles.albumName} numberOfLines={2}>{name}</Text>
-                    <Text style={styles.statsText}>{loading ? 'Loading...' : `${songs.length} Songs`}</Text>
+                {/* Main Content */}
+                {loading ? (
+                    <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 100 }} />
+                ) : (
+                    <FlatList
+                        data={songs}
+                        keyExtractor={(item) => item.id}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 160 }}
+                        ListHeaderComponent={
+                            <View>
+                                {/* Album Info */}
+                                <View style={styles.albumInfoContainer}>
+                                    <View style={styles.albumImageWrapper}>
+                                        <Image source={{ uri: image }} style={styles.albumCoverImage} />
+                                    </View>
+                                    <Text style={[styles.albumName, { color: theme.text }]} numberOfLines={2}>{name}</Text>
+                                    <Text style={[styles.artistName, { color: theme.textSecondary }]}>{albumArtist}</Text>
+                                    <Text style={[styles.statsText, { color: theme.textSecondary }]}>{`${songs.length} Songs`}</Text>
 
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                            style={[styles.shuffleButton, isShuffleOn && styles.shuffleButtonActive]}
-                            onPress={toggleShuffle}
-                        >
-                            <Shuffle size={20} color={isShuffleOn ? "white" : "#0f172a"} />
-                            <Text style={[styles.shuffleButtonText, isShuffleOn && { color: 'white' }]}>Shuffle</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.playButton} onPress={handlePlayAll}>
-                            <Play size={20} color="white" fill="white" />
-                            <Text style={styles.playButtonText}>Play</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* Songs List */}
-                <View style={styles.songsContainer}>
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#f97316" style={{ marginTop: 40 }} />
-                    ) : (
-                        <FlatList
-                            data={songs}
-                            keyExtractor={(item) => item.id}
-                            showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{ paddingBottom: 160 }}
-                            renderItem={({ item, index }) => (
+                                    <View style={styles.actionButtons}>
+                                        <TouchableOpacity style={styles.shuffleButton} onPress={toggleShuffle}>
+                                            <Shuffle size={22} color="white" />
+                                            <Text style={styles.shuffleButtonText}>Shuffle</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.playButton} onPress={handlePlayAll}>
+                                            <Play size={22} color="white" fill="white" />
+                                            <Text style={styles.playButtonText}>Play</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+                        }
+                        renderItem={({ item, index }) => (
+                            <View style={{ backgroundColor: theme.cardBackground, paddingHorizontal: 20, paddingTop: index === 0 ? 24 : 0 }}>
                                 <SongListItem
                                     song={item}
                                     index={index}
                                     showIndex={true}
                                     onPress={() => handlePlaySong(item, index)}
                                 />
-                            )}
-                        />
-                    )}
-                </View>
+                            </View>
+                        )}
+                    />
+                )}
             </SafeAreaView>
 
             {/* Mini Player */}
@@ -178,7 +180,10 @@ export const AlbumScreen: React.FC<AlbumDetailsScreenProps> = ({ route, navigati
             <BottomNav
                 activeTab="Home"
                 onTabPress={(tab) => {
-                    if (tab === 'Home') navigation.navigate('Home');
+                    if (tab === 'Home') navigation.navigate('Home', { tab: 'Home' });
+                    if (tab === 'Queue') navigation.navigate('Queue');
+                    if (tab === 'Downloads') navigation.navigate('Home', { tab: 'Downloads' });
+                    if (tab === 'Settings') navigation.navigate('Home', { tab: 'Settings' });
                 }}
             />
         </View>
@@ -188,14 +193,13 @@ export const AlbumScreen: React.FC<AlbumDetailsScreenProps> = ({ route, navigati
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#eef2f6',
     },
     headerImageContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        height: 400,
+        height: 550,
         opacity: 0.6,
     },
     headerImage: {
@@ -230,7 +234,7 @@ const styles = StyleSheet.create({
     },
     albumInfoContainer: {
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 20,
         paddingHorizontal: 20,
     },
     albumImageWrapper: {
@@ -239,10 +243,12 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         elevation: 10,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        marginBottom: 16,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        marginBottom: 20,
+        borderWidth: 4,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     albumCoverImage: {
         width: '100%',
@@ -250,62 +256,75 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     albumName: {
-        fontSize: 22,
+        fontSize: 28,
         fontWeight: '800',
         color: '#0f172a',
-        marginBottom: 4,
+        marginBottom: 8,
         textAlign: 'center',
     },
-    statsText: {
-        fontSize: 14,
+    artistName: {
+        fontSize: 18,
         color: '#64748b',
-        marginBottom: 20,
+        marginBottom: 4,
+        textAlign: 'center',
+        fontWeight: '600',
+    },
+    statsText: {
+        fontSize: 16,
+        color: '#64748b',
+        marginBottom: 32,
+        fontWeight: '500',
     },
     actionButtons: {
         flexDirection: 'row',
-        gap: 16,
-        marginBottom: 24,
+        gap: 20,
+        marginBottom: 40,
     },
     shuffleButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.8)',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
+        backgroundColor: '#f97316', // Orange
+        paddingVertical: 14,
+        paddingHorizontal: 32,
         borderRadius: 30,
-        gap: 8,
-        elevation: 2,
-    },
-    shuffleButtonActive: {
-        backgroundColor: '#0f172a', // Dark when active
+        gap: 10,
+        elevation: 6,
+        shadowColor: '#f97316',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     shuffleButtonText: {
-        color: '#0f172a',
+        color: 'white',
         fontWeight: '700',
-        fontSize: 16,
+        fontSize: 18,
     },
     playButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f97316',
-        paddingVertical: 12,
+        backgroundColor: '#1e293b', // Dark Slate
+        paddingVertical: 14,
         paddingHorizontal: 32,
         borderRadius: 30,
-        gap: 8,
-        elevation: 4,
+        gap: 10,
+        elevation: 6,
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     playButtonText: {
         color: 'white',
         fontWeight: '700',
-        fontSize: 16,
+        fontSize: 18,
     },
     songsContainer: {
-        flex: 1,
         backgroundColor: 'white',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
         paddingTop: 24,
         paddingHorizontal: 20,
+        marginTop: 0,
     },
 
 });

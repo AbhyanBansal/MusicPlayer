@@ -1,25 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronDown, MoreHorizontal, SkipBack, SkipForward, Play, Pause, Repeat, Shuffle, Timer, Cast, ListMusic, MessageSquare } from 'lucide-react-native';
+import { ChevronDown, MoreHorizontal, SkipBack, SkipForward, Play, Pause, Repeat, Shuffle, ListMusic, Download, Check, Loader } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { useThemeStore } from '../store/useThemeStore';
 import { ImageQuality } from '../types/music';
+import { getArtistName, getImageUrl, formatDuration } from '../utils/musicUtils';
+import { useToast } from '../components/NotificationToast';
+import { useDownloadStore } from '../store/useDownloadStore';
 
 const { width, height } = Dimensions.get('window');
-
-// Helper to get image URL
-const getImageUrl = (images?: ImageQuality[]) => {
-    if (!images || images.length === 0) return 'https://www.awi.de/o/awitheme/assets/images/placeholder-square.svg';
-    return images[2]?.url || images[1]?.url || images[0]?.url || 'https://www.awi.de/o/awitheme/assets/images/placeholder-square.svg';
-};
-
-const formatTime = (seconds: number) => {
-    const min = Math.floor(seconds / 60);
-    const sec = Math.floor(seconds % 60);
-    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
-};
 
 export const PlayerScreen = ({ navigation }: any) => {
     const currentTrack = usePlayerStore(state => state.currentTrack);
@@ -30,9 +22,22 @@ export const PlayerScreen = ({ navigation }: any) => {
     const playNext = usePlayerStore(state => state.playNext);
     const playPrevious = usePlayerStore(state => state.playPrevious);
     const seekTo = usePlayerStore(state => state.seekTo);
+    const addToQueue = usePlayerStore(state => state.addToQueue);
+
+    // Download Store
+    const downloadSong = useDownloadStore(state => state.downloadSong);
+    const isDownloaded = useDownloadStore(state => state.isDownloaded);
+    const isDownloading = useDownloadStore(state => state.isDownloading);
 
     const [isSeeking, setIsSeeking] = useState(false);
     const [sliderValue, setSliderValue] = useState(0);
+    const { theme, isDarkMode } = useThemeStore();
+    const { showToast } = useToast();
+
+    const isSongDownloaded = currentTrack ? isDownloaded(currentTrack.id) : false;
+    const isSongDownloading = currentTrack ? isDownloading[currentTrack.id] : false;
+
+    const artistName = currentTrack ? getArtistName(currentTrack.artists || currentTrack.primaryArtists) : '';
 
     useEffect(() => {
         if (!isSeeking) {
@@ -50,9 +55,9 @@ export const PlayerScreen = ({ navigation }: any) => {
 
     return (
         <View style={styles.container}>
-            {/* Background Gradient (simulated based on extracting colors, static for now) */}
+            {/* Background */}
             <LinearGradient
-                colors={['#fff', '#f0f9ff']} // Can be dynamic later
+                colors={[theme.background, theme.inputBackground]}
                 style={styles.background}
             />
 
@@ -60,12 +65,10 @@ export const PlayerScreen = ({ navigation }: any) => {
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-                        <ChevronDown size={28} color="#0f172a" />
+                        <ChevronDown size={28} color={theme.text} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}></Text>
-                    <TouchableOpacity style={styles.iconButton}>
-                        <MoreHorizontal size={24} color="#0f172a" />
-                    </TouchableOpacity>
+                    <View style={{ width: 44 }} /> {/* Spacer for balance if needed, or just remove if title is empty */}
                 </View>
 
                 {/* Album Art */}
@@ -78,8 +81,8 @@ export const PlayerScreen = ({ navigation }: any) => {
 
                 {/* Track Info */}
                 <View style={styles.trackInfo}>
-                    <Text style={styles.trackTitle} numberOfLines={1}>{currentTrack.name}</Text>
-                    <Text style={styles.artistName} numberOfLines={1}>{currentTrack.primaryArtists}</Text>
+                    <Text style={[styles.trackTitle, { color: theme.text }]} numberOfLines={1}>{currentTrack.name}</Text>
+                    <Text style={[styles.artistName, { color: theme.textSecondary }]} numberOfLines={1}>{artistName}</Text>
                 </View>
 
                 {/* Progress Bar */}
@@ -94,27 +97,27 @@ export const PlayerScreen = ({ navigation }: any) => {
                             seekTo(val);
                             setIsSeeking(false);
                         }}
-                        minimumTrackTintColor="#f97316"
-                        maximumTrackTintColor="#e2e8f0"
-                        thumbTintColor="#f97316"
+                        minimumTrackTintColor={theme.primary}
+                        maximumTrackTintColor={theme.border}
+                        thumbTintColor={theme.primary}
                     />
                     <View style={styles.timeContainer}>
-                        <Text style={styles.timeText}>{formatTime(sliderValue)}</Text>
-                        <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                        <Text style={[styles.timeText, { color: theme.textSecondary }]}>{formatDuration(sliderValue)}</Text>
+                        <Text style={[styles.timeText, { color: theme.textSecondary }]}>{formatDuration(duration)}</Text>
                     </View>
                 </View>
 
                 {/* Controls */}
                 <View style={styles.controlsContainer}>
                     <TouchableOpacity>
-                        <Shuffle size={24} color="#94a3b8" />
+                        <Shuffle size={24} color={theme.textSecondary} />
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={playPrevious}>
-                        <SkipBack size={32} color="#0f172a" fill="#0f172a" />
+                        <SkipBack size={32} color={theme.text} fill={theme.text} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={togglePlay} style={styles.playButton}>
+                    <TouchableOpacity onPress={togglePlay} style={[styles.playButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
                         {isPlaying ?
                             <Pause size={32} color="white" fill="white" /> :
                             <Play size={32} color="white" fill="white" />
@@ -122,32 +125,54 @@ export const PlayerScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={playNext}>
-                        <SkipForward size={32} color="#0f172a" fill="#0f172a" />
+                        <SkipForward size={32} color={theme.text} fill={theme.text} />
                     </TouchableOpacity>
 
                     <TouchableOpacity>
-                        <Repeat size={24} color="#94a3b8" />
+                        <Repeat size={24} color={theme.textSecondary} />
                     </TouchableOpacity>
                 </View>
 
                 {/* Bottom Action Bar */}
-                <View style={styles.bottomActions}>
-                    <TouchableOpacity style={styles.bottomIcon}>
-                        <Timer size={22} color="#0f172a" />
+                <View style={[styles.bottomActions, { justifyContent: 'space-around', paddingHorizontal: 50 }]}>
+                    <TouchableOpacity style={styles.bottomIcon} onPress={() => {
+                        navigation.navigate('Queue');
+                    }}>
+                        <ListMusic size={24} color={theme.text} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.bottomIcon}>
-                        <Cast size={22} color="#0f172a" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.bottomIcon}>
-                        <ListMusic size={22} color="#0f172a" />
+                    <TouchableOpacity
+                        style={styles.bottomIcon}
+                        onPress={async () => {
+                            if (!currentTrack || isSongDownloaded || isSongDownloading) return;
+
+                            showToast("Downloading...");
+                            // Find URL
+                            const lastDownload = currentTrack.downloadUrl?.[currentTrack.downloadUrl.length - 1];
+                            const url = lastDownload?.url || lastDownload?.link;
+
+                            if (url) {
+                                const success = await downloadSong(currentTrack, url);
+                                if (success) {
+                                    showToast("Downloaded to library");
+                                } else {
+                                    showToast("Download failed");
+                                }
+                            } else {
+                                showToast("No download URL found");
+                            }
+                        }}
+                    >
+                        {isSongDownloaded ? (
+                            <Check size={24} color={theme.primary} />
+                        ) : isSongDownloading ? (
+                            <Loader size={24} color={theme.textSecondary} />
+                        ) : (
+                            <Download size={24} color={theme.text} />
+                        )}
                     </TouchableOpacity>
                 </View>
 
-                {/* Lyrics Pull-up Hint */}
-                <View style={styles.lyricsHint}>
-                    <ChevronDown size={20} color="#94a3b8" style={{ transform: [{ rotate: '180deg' }] }} />
-                    <Text style={styles.lyricsText}>Lyrics</Text>
-                </View>
+
 
             </SafeAreaView>
         </View>
@@ -157,7 +182,6 @@ export const PlayerScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
     },
     background: {
         position: 'absolute',
@@ -262,15 +286,5 @@ const styles = StyleSheet.create({
     },
     bottomIcon: {
         padding: 10,
-    },
-    lyricsHint: {
-        alignItems: 'center',
-        paddingBottom: 10,
-    },
-    lyricsText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#0f172a',
-        marginTop: 4,
     },
 });

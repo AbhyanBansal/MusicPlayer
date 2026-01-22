@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react-native';
+import { useThemeStore } from '../store/useThemeStore';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { ImageQuality } from '../types/music';
 
@@ -21,6 +22,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({ onPress }) => {
     const togglePlay = usePlayerStore(state => state.togglePlay);
     const playNext = usePlayerStore(state => state.playNext);
     const playPrevious = usePlayerStore(state => state.playPrevious);
+    const { theme } = useThemeStore();
 
     if (!currentTrack) return null;
 
@@ -30,24 +32,29 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({ onPress }) => {
             onPress={onPress}
             style={styles.container}
         >
-            <BlurView intensity={80} style={styles.blurContainer}>
+            <LinearGradient
+                colors={theme.miniPlayerGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradientContainer}
+            >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
                     <Image
                         source={{ uri: getImageUrl(currentTrack.image) }}
                         style={{ width: 40, height: 40, borderRadius: 20 }}
                     />
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: 'white' }} numberOfLines={1}>
                             {currentTrack.name}
                         </Text>
-                        <Text style={{ fontSize: 10, color: '#64748b' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }} numberOfLines={1}>
                             {currentTrack.primaryArtists}
                         </Text>
                     </View>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                     <TouchableOpacity onPress={(e) => { e.stopPropagation(); playPrevious(); }}>
-                        <SkipBack size={20} color="#0f172a" />
+                        <SkipBack size={20} color="white" />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -55,16 +62,16 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({ onPress }) => {
                         style={styles.playButton}
                     >
                         {isPlaying ?
-                            <Pause size={16} color="white" fill="white" /> :
-                            <Play size={16} color="white" fill="white" />
+                            <Pause size={16} color={theme.miniPlayerGradient[1]} fill={theme.miniPlayerGradient[1]} /> :
+                            <Play size={16} color={theme.miniPlayerGradient[1]} fill={theme.miniPlayerGradient[1]} />
                         }
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={(e) => { e.stopPropagation(); playNext(); }}>
-                        <SkipForward size={20} color="#0f172a" />
+                        <SkipForward size={20} color="white" />
                     </TouchableOpacity>
                 </View>
-            </BlurView>
+            </LinearGradient>
         </TouchableOpacity>
     );
 };
@@ -72,31 +79,33 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({ onPress }) => {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 82,
-        left: 20,
-        right: 20
+        bottom: 92, // 80 (Navbar) + 12 (Spacing)
+        left: 12,
+        right: 12
     },
-    blurContainer: {
+    gradientContainer: {
         height: 70,
         borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.4)',
-        overflow: 'hidden',
+        // Stronger shadow for floating effect
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 8,
     },
     playButton: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#f97316',
+        backgroundColor: 'white',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#f97316',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowColor: 'black',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     }
 });

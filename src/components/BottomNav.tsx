@@ -1,40 +1,42 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { Home, Heart, Library, Settings } from 'lucide-react-native';
+import { Home, Settings, ListMusic, Download } from 'lucide-react-native';
+import { useThemeStore } from '../store/useThemeStore';
 
 interface BottomNavProps {
-    activeTab?: 'Home' | 'Likes' | 'Library' | 'Settings';
-    onTabPress?: (tab: 'Home' | 'Likes' | 'Library' | 'Settings') => void;
+    activeTab?: 'Home' | 'Queue' | 'Downloads' | 'Settings';
+    onTabPress?: (tab: 'Home' | 'Queue' | 'Downloads' | 'Settings') => void;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab = 'Home', onTabPress }) => {
+    const { theme } = useThemeStore();
+
     return (
-        <BlurView intensity={90} style={styles.bottomNav}>
+        <View style={[styles.bottomNav, { backgroundColor: theme.cardBackground, borderTopColor: theme.border }]}>
             <TouchableOpacity style={styles.navItem} onPress={() => onTabPress && onTabPress('Home')}>
-                <Home size={24} color={activeTab === 'Home' ? "#f97316" : "#94a3b8"} />
-                <Text style={[styles.navText, activeTab === 'Home' && { color: '#f97316' }]}>Home</Text>
-                {activeTab === 'Home' && <View style={styles.activeNavDot} />}
+                <Home size={24} color={activeTab === 'Home' ? theme.tabActive : theme.tabInactive} />
+                <Text style={[styles.navText, { color: activeTab === 'Home' ? theme.tabActive : theme.tabInactive }]}>Home</Text>
+                {activeTab === 'Home' && <View style={[styles.activeNavDot, { backgroundColor: theme.tabActive }]} />}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.navItem} onPress={() => onTabPress && onTabPress('Likes')}>
-                <Heart size={24} color={activeTab === 'Likes' ? "#f97316" : "#94a3b8"} />
-                <Text style={[styles.navText, activeTab === 'Likes' && { color: '#f97316' }]}>Likes</Text>
-                {activeTab === 'Likes' && <View style={styles.activeNavDot} />}
+            <TouchableOpacity style={styles.navItem} onPress={() => onTabPress && onTabPress('Queue')}>
+                <ListMusic size={24} color={activeTab === 'Queue' ? theme.tabActive : theme.tabInactive} />
+                <Text style={[styles.navText, { color: activeTab === 'Queue' ? theme.tabActive : theme.tabInactive }]}>Queue</Text>
+                {activeTab === 'Queue' && <View style={[styles.activeNavDot, { backgroundColor: theme.tabActive }]} />}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.navItem} onPress={() => onTabPress && onTabPress('Library')}>
-                <Library size={24} color={activeTab === 'Library' ? "#f97316" : "#94a3b8"} />
-                <Text style={[styles.navText, activeTab === 'Library' && { color: '#f97316' }]}>Library</Text>
-                {activeTab === 'Library' && <View style={styles.activeNavDot} />}
+            <TouchableOpacity style={styles.navItem} onPress={() => onTabPress && onTabPress('Downloads')}>
+                <Download size={24} color={activeTab === 'Downloads' ? theme.tabActive : theme.tabInactive} />
+                <Text style={[styles.navText, { color: activeTab === 'Downloads' ? theme.tabActive : theme.tabInactive }]}>Downloads</Text>
+                {activeTab === 'Downloads' && <View style={[styles.activeNavDot, { backgroundColor: theme.tabActive }]} />}
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.navItem} onPress={() => onTabPress && onTabPress('Settings')}>
-                <Settings size={24} color={activeTab === 'Settings' ? "#f97316" : "#94a3b8"} />
-                <Text style={[styles.navText, activeTab === 'Settings' && { color: '#f97316' }]}>Settings</Text>
-                {activeTab === 'Settings' && <View style={styles.activeNavDot} />}
+                <Settings size={24} color={activeTab === 'Settings' ? theme.tabActive : theme.tabInactive} />
+                <Text style={[styles.navText, { color: activeTab === 'Settings' ? theme.tabActive : theme.tabInactive }]}>Settings</Text>
+                {activeTab === 'Settings' && <View style={[styles.activeNavDot, { backgroundColor: theme.tabActive }]} />}
             </TouchableOpacity>
-        </BlurView>
+        </View>
     );
 };
 
@@ -44,13 +46,21 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: 80,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.4)',
+        height: 85,
+        backgroundColor: '#ffffff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         flexDirection: 'row',
         justifyContent: 'space-around',
         paddingTop: 16,
+        paddingHorizontal: 10,
+        // Shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 20,
+        borderTopWidth: 0, // Removed border for cleaner floating look with shadow
     },
     navItem: {
         alignItems: 'center',

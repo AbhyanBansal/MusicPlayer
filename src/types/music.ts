@@ -6,6 +6,7 @@ export interface ImageQuality {
 export interface DownloadUrl {
     quality: string;
     url: string;
+    link?: string; // Support both url and link
 }
 
 // Separate interface for Album when searching for albums individually
@@ -16,9 +17,12 @@ export interface AlbumResult {
     type: string; // "album"
     playCount: string;
     language: string;
-    explicitContent: string;
-    primaryArtists: string | any[];
-    artists?: { id: string, name: string }[];
+    primaryArtists?: string | any[]; // Kept for backward compat if needed
+    artists?: {
+        primary: ArtistResult[];
+        featured?: ArtistResult[];
+        all?: ArtistResult[];
+    };
     image: ImageQuality[];
     url: string;
 }
@@ -48,11 +52,17 @@ export interface Song {
     year: string;
     duration: string;
     label: string;
-    primaryArtists: string;
+    primaryArtists?: string; // Often empty/undefined in new API responses
+    artists?: {
+        primary: ArtistResult[];
+        featured?: ArtistResult[];
+        all?: ArtistResult[];
+    };
     language: string;
     copyright: string;
     image: ImageQuality[];
     downloadUrl: DownloadUrl[];
+    localPath?: string; // Path to downloaded file
 }
 
 export interface SearchResponseData<T> {

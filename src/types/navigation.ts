@@ -1,7 +1,8 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 export type RootStackParamList = {
-    Home: undefined;
+    Home: { tab?: 'Home' | 'Queue' | 'Downloads' | 'Settings' } | undefined;
+    Settings: undefined;
     Player: undefined;
     Queue: undefined;
     ArtistDetails: { id: string; name: string; image: string };

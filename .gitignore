@@ -39,3 +39,18 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Debug/Temp files
+album_details.json
+album_search.json
+api_response.json
+debug_album.json
+debug_fetch.js
+debug_fetch_details.js
+debug_search.json
+inspect_album_artists.js
+inspect_image_keys.js
+inspect_images.js
+inspect_song_details.js
+test_api.js
+test_api.ts

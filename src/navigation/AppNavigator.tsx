@@ -10,15 +10,23 @@ import { AlbumScreen } from '../screens/AlbumScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
+import { CustomSplash } from '../screens/CustomSplash';
+
 export const AppNavigator = () => {
+    const [isSplashVisible, setSplashVisible] = React.useState(true);
+
+    if (isSplashVisible) {
+        return <CustomSplash onFinish={() => setSplashVisible(false)} />;
+    }
+
     return (
         <NavigationContainer>
-            <Stack.Navigator initialRouteName="Home">
-                <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Music Player' }} />
-                <Stack.Screen name="ArtistDetails" component={ArtistScreen} options={{ headerShown: false }} />
-                <Stack.Screen name="AlbumDetails" component={AlbumScreen} options={{ headerShown: false }} />
-                <Stack.Screen name="Player" component={PlayerScreen} options={{ title: 'Now Playing' }} />
-                <Stack.Screen name="Queue" component={QueueScreen} options={{ title: 'Queue' }} />
+            <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="ArtistDetails" component={ArtistScreen} />
+                <Stack.Screen name="AlbumDetails" component={AlbumScreen} />
+                <Stack.Screen name="Player" component={PlayerScreen} />
+                <Stack.Screen name="Queue" component={QueueScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );

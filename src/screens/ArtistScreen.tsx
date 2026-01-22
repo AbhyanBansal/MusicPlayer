@@ -11,6 +11,8 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { MiniPlayer } from '../components/MiniPlayer';
 import { BottomNav } from '../components/BottomNav';
 import { SongListItem } from '../components/SongListItem';
+import { getArtistName } from '../utils/musicUtils';
+import { useThemeStore } from '../store/useThemeStore';
 
 const { width } = Dimensions.get('window');
 
@@ -26,12 +28,22 @@ export const ArtistScreen: React.FC<ArtistDetailsScreenProps> = ({ route, naviga
     const isPlaying = usePlayerStore(state => state.isPlaying);
     const togglePlay = usePlayerStore(state => state.togglePlay);
 
+    // Theme
+    const { theme, isDarkMode } = useThemeStore();
+
     useEffect(() => {
         const fetchDetails = async () => {
             setLoading(true);
             const data = await getArtistDetails(id);
             if (data && data.topSongs) {
-                setSongs(data.topSongs);
+                // Ensure primaryArtists is populated, fallback to Artist Name
+                const songsWithArtist = data.topSongs.map(song => ({
+                    ...song,
+                    primaryArtists: getArtistName(song.artists || song.primaryArtists) === 'Unknown Artist'
+                        ? name
+                        : getArtistName(song.artists || song.primaryArtists)
+                }));
+                setSongs(songsWithArtist);
             }
             setLoading(false);
         };
@@ -55,28 +67,15 @@ export const ArtistScreen: React.FC<ArtistDetailsScreenProps> = ({ route, naviga
         }
     };
 
-    const getImageUrl = (images?: ImageQuality[]) => {
-        if (!images || images.length === 0) return image || 'https://www.awi.de/o/awitheme/assets/images/placeholder-square.svg';
-        return images[2]?.url || images[1]?.url || images[0]?.url || image;
-    };
-
-    const formatDuration = (seconds?: string | number) => {
-        if (!seconds) return '';
-        const s = Number(seconds);
-        const min = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return `${min}:${sec < 10 ? '0' : ''}${sec}`;
-    };
-
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             {/* Header Image Background */}
             <View style={styles.headerImageContainer}>
                 <Image source={{ uri: image }} style={styles.headerImage} blurRadius={30} />
                 <LinearGradient
-                    colors={['transparent', '#eef2f6']}
+                    colors={['transparent', theme.background]}
                     style={styles.gradient}
                 />
             </View>
@@ -84,73 +83,66 @@ export const ArtistScreen: React.FC<ArtistDetailsScreenProps> = ({ route, naviga
             <SafeAreaView style={styles.safeArea}>
                 {/* Navigation Header */}
                 <View style={styles.navHeader}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <ArrowLeft size={24} color="#0f172a" />
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)' }]}>
+                        <ArrowLeft size={24} color={theme.text} />
                     </TouchableOpacity>
                     <TouchableOpacity>
-                        <MoreVertical size={24} color="#0f172a" />
+                        <MoreVertical size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
-                {/* Artist Info */}
-                <View style={styles.artistInfoContainer}>
-                    <View style={styles.artistImageWrapper}>
-                        <Image source={{ uri: image }} style={styles.artistProfileImage} />
-                    </View>
-                    <Text style={styles.artistName}>{name}</Text>
-                    <Text style={styles.statsText}>{loading ? 'Loading...' : `${songs.length} Top Songs`}</Text>
+                {/* Main Content */}
+                {loading ? (
+                    <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 100 }} />
+                ) : (
+                    <FlatList
+                        data={songs}
+                        keyExtractor={(item) => item.id}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 160 }}
+                        ListHeaderComponent={
+                            <View>
+                                {/* Artist Info */}
+                                <View style={styles.artistInfoContainer}>
+                                    <View style={styles.artistImageWrapper}>
+                                        <Image source={{ uri: image }} style={styles.artistProfileImage} />
+                                    </View>
+                                    <Text style={[styles.artistName, { color: theme.text }]}>{name}</Text>
+                                    <Text style={[styles.statsText, { color: theme.textSecondary }]}>{`${songs.length} Top Songs`}</Text>
 
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity style={styles.shuffleButton} onPress={handleShufflePlay}>
-                            <Play size={20} color="white" fill="white" />
-                            <Text style={styles.shuffleButtonText}>Shuffle</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.playButton} onPress={handleShufflePlay}>
-                            <Play size={20} color="#f97316" fill="#f97316" />
-                            <Text style={styles.playButtonText}>Play</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                                    <View style={styles.actionButtons}>
+                                        <TouchableOpacity style={styles.shuffleButton} onPress={handleShufflePlay}>
+                                            <Play size={22} color="white" fill="white" />
+                                            <Text style={styles.shuffleButtonText}>Shuffle</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.playButton} onPress={() => songs.length > 0 && playTrack(songs[0])}>
+                                            <Play size={22} color="white" fill="white" />
+                                            <Text style={styles.playButtonText}>Play</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
 
-                {/* Songs List */}
-                <View style={styles.songsContainer}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Songs</Text>
-                        <TouchableOpacity><Text style={styles.viewAllText}>See All</Text></TouchableOpacity>
-                    </View>
-
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#f97316" style={{ marginTop: 40 }} />
-                    ) : (
-                        <FlatList
-                            data={songs}
-                            keyExtractor={(item) => item.id}
-                            showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{ paddingBottom: 160 }}
-                            renderItem={({ item, index }) => {
-                                const isCurrentSong = currentTrack?.id === item.id;
-                                return (
-                                    <TouchableOpacity
-                                        style={[styles.songItem, isCurrentSong && styles.activeSongItem]}
-                                        onPress={() => handlePlaySong(item, index)}
-                                    >
-                                        <Image source={{ uri: getImageUrl(item.image) }} style={styles.songImage} />
-                                        <View style={{ flex: 1, marginLeft: 12 }}>
-                                            <Text style={[styles.songTitle, isCurrentSong && styles.activeSongText]} numberOfLines={1}>{item.name}</Text>
-                                            <Text style={styles.songSubtitle} numberOfLines={1}>{item.album?.name || 'Single'}</Text>
-                                        </View>
-                                        <Text style={styles.songDuration}>{formatDuration(item.duration)}</Text>
-                                        {isCurrentSong && isPlaying ? (
-                                            <Pause size={20} color="#f97316" fill="#f97316" style={{ marginLeft: 10 }} />
-                                        ) : (
-                                            <Play size={20} color={isCurrentSong ? "#f97316" : "#94a3b8"} fill={isCurrentSong ? "#f97316" : "transparent"} style={{ marginLeft: 10 }} />
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            }}
-                        />
-                    )}
-                </View>
+                                {/* Songs Section Header */}
+                                <View style={[styles.songsContainer, { backgroundColor: theme.cardBackground, minHeight: undefined }]}>
+                                    <View style={styles.sectionHeader}>
+                                        <Text style={[styles.sectionTitle, { color: theme.text }]}>Songs</Text>
+                                        <TouchableOpacity><Text style={[styles.viewAllText, { color: theme.primary }]}>See All</Text></TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+                        }
+                        renderItem={({ item, index }) => (
+                            <View style={{ backgroundColor: theme.cardBackground, paddingHorizontal: 20 }}>
+                                <SongListItem
+                                    song={item}
+                                    index={index}
+                                    showIndex={true}
+                                    onPress={() => handlePlaySong(item, index)}
+                                />
+                            </View>
+                        )}
+                    />
+                )}
             </SafeAreaView>
 
             {/* Mini Player */}
@@ -160,7 +152,10 @@ export const ArtistScreen: React.FC<ArtistDetailsScreenProps> = ({ route, naviga
             <BottomNav
                 activeTab="Home"
                 onTabPress={(tab) => {
-                    if (tab === 'Home') navigation.navigate('Home');
+                    if (tab === 'Home') navigation.navigate('Home', { tab: 'Home' });
+                    if (tab === 'Queue') navigation.navigate('Queue');
+                    if (tab === 'Downloads') navigation.navigate('Home', { tab: 'Downloads' });
+                    if (tab === 'Settings') navigation.navigate('Home', { tab: 'Settings' });
                 }}
             />
         </View>
@@ -170,14 +165,13 @@ export const ArtistScreen: React.FC<ArtistDetailsScreenProps> = ({ route, naviga
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#eef2f6',
     },
     headerImageContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        height: 400,
+        height: 550, // Increased to cover taller content
         opacity: 0.6,
     },
     headerImage: {
@@ -216,74 +210,86 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     artistImageWrapper: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
         elevation: 10,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        marginBottom: 16,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        marginBottom: 20,
+        borderWidth: 4,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     artistProfileImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 60,
+        borderRadius: 80,
     },
     artistName: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: '800',
         color: '#0f172a',
-        marginBottom: 4,
+        marginBottom: 8,
+        textAlign: 'center',
     },
     statsText: {
-        fontSize: 14,
+        fontSize: 16,
         color: '#64748b',
-        marginBottom: 24,
+        marginBottom: 32,
+        fontWeight: '500',
     },
     actionButtons: {
         flexDirection: 'row',
-        gap: 16,
-        marginBottom: 30,
+        gap: 20,
+        marginBottom: 40,
     },
     shuffleButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f97316',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
+        backgroundColor: '#f97316', // Orange
+        paddingVertical: 14,
+        paddingHorizontal: 32,
         borderRadius: 30,
-        gap: 8,
-        elevation: 4,
+        gap: 10,
+        elevation: 6,
+        shadowColor: '#f97316',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     shuffleButtonText: {
         color: 'white',
         fontWeight: '700',
-        fontSize: 16,
+        fontSize: 18,
     },
     playButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'white',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
+        backgroundColor: '#1e293b', // Dark Slate
+        paddingVertical: 14,
+        paddingHorizontal: 32,
         borderRadius: 30,
-        gap: 8,
-        elevation: 2,
+        gap: 10,
+        elevation: 6,
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     playButtonText: {
-        color: '#f97316',
+        color: 'white',
         fontWeight: '700',
-        fontSize: 16,
+        fontSize: 18,
     },
     songsContainer: {
-        flex: 1,
         backgroundColor: 'white',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
         paddingTop: 24,
         paddingHorizontal: 20,
+        marginTop: 0, // Removed gap
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -301,5 +307,5 @@ const styles = StyleSheet.create({
         color: '#f97316',
         fontWeight: '600',
     },
-
 });
+
